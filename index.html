@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Esboço – Detecção de fraudes em cartão de crédito</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F9;--card:#ffffff;--primary:#0A3D62;--sec:#3C6382;--fraud:#E55039;--kpi:#38ADA9;
+  --text:#2F3640;--muted:#69737f;--line:#e2e6ec;--normal:#0A3D62;--amber:#E9A23B;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0f1721;--card:#172230;--text:#e6ebf1;--muted:#93a0b0;--line:#293646;--normal:#5FA3D6;--sec:#7FA6C4;--amber:#F0B356}
+}
+:root[data-theme="dark"]{--bg:#0f1721;--card:#172230;--text:#e6ebf1;--muted:#93a0b0;--line:#293646;--normal:#5FA3D6;--sec:#7FA6C4;--amber:#F0B356}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+
+.top{background:#0A3D62;color:#fff;display:flex;align-items:center;gap:12px;padding:12px 16px}
+.logo{width:40px;height:40px;border-radius:10px;border:2px dashed rgba(255,255,255,.55);display:grid;place-items:center;font-size:10px;font-weight:600;flex:none}
+.top h1{font-size:15px;line-height:1.25;font-weight:600;margin:0;letter-spacing:.01em}
+.top .tag{margin-left:auto;font-size:12px;background:#E55039;padding:3px 10px;border-radius:99px;font-weight:600;flex:none}
+
+.wrap{max-width:1240px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.menu{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.menu button{flex:none;background:var(--card);color:var(--text);border:1px solid var(--line);padding:10px 14px;border-radius:10px;font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left;white-space:nowrap}
+.menu button[aria-selected="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+.menu button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--kpi);outline-offset:2px}
+.menu .lbl{display:none}
+
+main{min-width:0;flex:1}
+.filters{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 10px;margin-bottom:12px}
+.filters label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+select{font:inherit;font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;width:100%}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.card h3{margin:0 0 2px;font-size:15px;font-weight:600}
+.card .sub{margin:0 0 8px;font-size:12.5px;color:var(--muted)}
+section[role="tabpanel"]{display:none}
+section[role="tabpanel"].on{display:block}
+.pghead{margin:0 0 12px}
+.pghead h2{margin:0;font-size:20px;font-weight:700}
+.pghead p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.stack{display:grid;gap:12px}
+.grid2{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
+.kpi{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--accent,var(--primary));border-radius:12px;padding:12px 14px}
+.kpi small{display:block;color:var(--muted);font-size:12.5px}
+.kpi b{display:block;font-size:24px;font-weight:700;line-height:1.2;margin-top:2px}
+.kpi span{font-size:12px;color:var(--muted)}
+
+svg{display:block;max-width:100%;height:auto}
+.ax{fill:var(--muted);font-size:12.5px}
+.gl{stroke:var(--line);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin-top:6px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+.donut{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center}
+.donut svg{width:190px;flex:none}
+.donut ul{list-style:none;margin:0;padding:0;font-size:14px;display:grid;gap:8px}
+.donut li b{display:block;font-size:18px}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:13px}
+td.n,th.n{text-align:right}
+tr:last-child td{border-bottom:0}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12.5px;font-weight:600;color:#fff}
+.b-alto{background:var(--fraud)}.b-medio{background:var(--amber);color:#2b2100}.b-baixo{background:var(--kpi);color:#04302f}
+.note{border-left:4px solid var(--kpi);background:color-mix(in srgb,var(--kpi) 12%,var(--card));padding:10px 12px;border-radius:0 10px 10px 0;font-size:14px}
+.note b{font-weight:600}
+
+.cm{display:grid;grid-template-columns:78px 1fr 1fr;gap:6px;font-size:13px}
+.cm .ch{color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center;padding:4px}
+.cm .cc{border-radius:10px;padding:14px 8px;text-align:center;font-size:22px;font-weight:700;line-height:1.2}
+.cm .cc small{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:2px}
+.cm .ok{background:color-mix(in srgb,var(--kpi) 24%,var(--card))}
+.cm .bad{background:color-mix(in srgb,var(--fraud) 22%,var(--card))}
+
+.gauge{text-align:center}
+.gauge svg{width:100%;max-width:320px;margin:0 auto}
+.gauge .cls{font-weight:600;font-size:16px;margin:2px 0 10px}
+.gauge label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.gauge input[type=range]{width:100%;accent-color:var(--fraud)}
+
+.foot{color:var(--muted);font-size:12.5px;text-align:center;padding:8px 0 14px}
+
+@media (min-width:700px){
+  .filters{grid-template-columns:repeat(4,1fr)}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .top h1{font-size:18px}
+}
+@media (min-width:860px){
+  .wrap{flex-direction:row;align-items:flex-start;padding:16px;gap:16px}
+  .menu{flex-direction:column;width:212px;flex:none;overflow:visible;position:sticky;top:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .menu button{border:0;background:transparent;font-size:15px;padding:11px 12px}
+  .menu button[aria-selected="true"]{background:var(--primary)}
+  .menu .lbl{display:block;font-size:12.5px;color:var(--muted);padding:2px 12px 6px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="logo" aria-hidden="true">LOGO</div>
+  <h1>Detecção de fraudes em cartão de crédito</h1>
+  <span class="tag">Esboço</span>
+</header>
+
+<div class="wrap">
+  <nav class="menu" role="tablist" aria-label="Páginas do relatório">
+    <div class="lbl">Menu lateral</div>
+    <button role="tab" aria-selected="true" data-p="0">📊 Visão Geral</button>
+    <button role="tab" aria-selected="false" data-p="1">💳 Perfil das Fraudes</button>
+    <button role="tab" aria-selected="false" data-p="2">⏰ Análise Temporal</button>
+    <button role="tab" aria-selected="false" data-p="3">🤖 Predição</button>
+  </nav>
+
+  <main>
+    <div class="card filters" aria-label="Filtros globais">
+      <label>Período<select><option>Todo o período</option><option>Dia 1</option><option>Dia 2</option></select></label>
+      <label>Faixa de valor<select><option>Todas</option><option>Até R$ 100</option><option>R$ 100 a R$ 500</option><option>Acima de R$ 500</option></select></label>
+      <label>Tipo de transação<select><option>Todos</option><option>Presencial</option><option>Online</option><option>Recorrente</option></select></label>
+      <label>Status<select><option>Fraude e normal</option><option>Fraude</option><option>Normal</option></select></label>
+    </div>
+
+    <!-- PÁGINA 1 -->
+    <section role="tabpanel" class="on" id="p0">
+      <div class="pghead"><h2>Visão geral das transações</h2><p>Indicadores gerais do sistema.</p></div>
+      <div class="stack">
+        <div class="kpis">
+          <div class="kpi" style="--accent:var(--primary)"><small>Total de transações</small><b>284.807</b></div>
+          <div class="kpi" style="--accent:var(--fraud)"><small>Total de fraudes</small><b>492</b></div>
+          <div class="kpi" style="--accent:var(--fraud)"><small>Taxa de fraude</small><b>0,17%</b></div>
+          <div class="kpi" style="--accent:var(--kpi)"><small>Valor total</small><b>R$ 25 Mi</b></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3>Fraudes x não fraudes</h3>
+            <p class="sub">Gráfico de pizza (fatia de fraude ampliada para ficar visível)</p>
+            <div class="donut" id="donut"></div>
+          </div>
+          <div class="card">
+            <h3>Evolução das transações no tempo</h3>
+            <p class="sub">Gráfico de linha, por hora, em 2 dias</p>
+            <div id="c-evol"></div>
+            <div class="legend"><span><i style="background:var(--normal)"></i>Normais (eixo esquerdo)</span><span><i style="background:var(--fraud)"></i>Fraudes (eixo direito)</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PÁGINA 2 -->
+    <section role="tabpanel" id="p1">
+      <div class="pghead"><h2>Perfil das transações fraudulentas</h2><p>Identificar as características das fraudes.</p></div>
+      <div class="stack">
+        <div class="note"><b>Pergunta respondida:</b> as fraudes acontecem com mais frequência em quais valores?</div>
+        <div class="grid2">
+          <div class="card">
+            <h3>Fraudes por faixa de valor</h3>
+            <p class="sub">Gráfico de barras, quantidade de fraudes (valores em R$)</p>
+            <div id="c-faixa"></div>
+            <p class="sub" id="ins-faixa" style="margin:8px 0 0"></p>
+          </div>
+          <div class="card">
+            <h3>Distribuição do valor das transações</h3>
+            <p class="sub">Histograma e boxplot (início de cada faixa de R$ 200)</p>
+            <div id="c-hist"></div>
+            <div id="c-box"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Tabela resumo</h3>
+          <p class="sub">Valores ilustrativos, serão calculados a partir da base</p>
+          <table>
+            <thead><tr><th>Indicador</th><th class="n">Valor</th></tr></thead>
+            <tbody>
+              <tr><td>Valor médio</td><td class="n">R$ 122</td></tr>
+              <tr><td>Valor mediano</td><td class="n">R$ 75</td></tr>
+              <tr><td>Valor máximo</td><td class="n">R$ 2.126</td></tr>
+              <tr><td>Valor mínimo</td><td class="n">R$ 0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PÁGINA 3 -->
+    <section role="tabpanel" id="p2">
+      <div class="pghead"><h2>Análise temporal de risco</h2><p>Verificar os períodos de maior ocorrência de fraude.</p></div>
+      <div class="stack">
+        <div class="card">
+          <h3>Mapa de calor: horário x frequência de fraudes</h3>
+          <p class="sub">Cada célula é uma hora; quanto mais escuro o vermelho, mais fraudes</p>
+          <div id="c-heat"></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3>Fraudes por hora do dia</h3>
+            <p class="sub">Gráfico de colunas, soma dos 2 dias. A opacidade indica o risco do período.</p>
+            <div id="c-hora"></div>
+          </div>
+          <div class="card">
+            <h3>Exemplo de insight</h3>
+            <p class="sub">Risco por período do dia</p>
+            <table id="t-risco"></table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Evolução temporal das fraudes</h3>
+          <p class="sub">Linha do tempo, fraudes por hora em 2 dias</p>
+          <div id="c-tempo"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PÁGINA 4 -->
+    <section role="tabpanel" id="p3">
+      <div class="pghead"><h2>Modelo de detecção de fraudes</h2><p>Resultados do modelo preditivo (Random Forest).</p></div>
+      <div class="stack">
+        <div class="kpis">
+          <div class="kpi" style="--accent:var(--kpi)"><small>Accuracy</small><b>99%</b></div>
+          <div class="kpi" style="--accent:var(--kpi)"><small>Precision</small><b>94%</b></div>
+          <div class="kpi" style="--accent:var(--kpi)"><small>Recall</small><b>92%</b></div>
+          <div class="kpi" style="--accent:var(--kpi)"><small>F1-Score</small><b>93%</b></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3>Matriz de confusão</h3>
+            <p class="sub">Base de teste (ilustrativa)</p>
+            <div class="cm">
+              <div></div><div class="ch">Previsto: normal</div><div class="ch">Previsto: fraude</div>
+              <div class="ch">Real: normal</div><div class="cc ok">56.858<small>Verdadeiro negativo</small></div><div class="cc bad">6<small>Falso positivo</small></div>
+              <div class="ch">Real: fraude</div><div class="cc bad">8<small>Falso negativo</small></div><div class="cc ok">90<small>Verdadeiro positivo</small></div>
+            </div>
+          </div>
+          <div class="card gauge">
+            <h3>Probabilidade de fraude</h3>
+            <p class="sub">Velocímetro de uma transação simulada</p>
+            <svg viewBox="0 0 300 200" role="img" aria-label="Velocímetro de probabilidade de fraude" id="gauge"></svg>
+            <div class="cls" id="g-cls"></div>
+            <label for="g-in">Simular probabilidade</label>
+            <input id="g-in" type="range" min="0" max="100" value="82">
+          </div>
+        </div>
+        <div class="card">
+          <h3>Importância das variáveis</h3>
+          <p class="sub">Feature importance do Random Forest (valores ilustrativos)</p>
+          <div id="c-feat"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="foot">Esboço visual com dados ilustrativos. Os números finais virão da base de transações.</div>
+  </main>
+</div>
+
+<script>
+/* ---------- utilidades ---------- */
+const $=s=>document.querySelector(s);
+const br=n=>n.toLocaleString('pt-BR');
+const short=v=>v>=1000?(v/1000).toLocaleString('pt-BR')+' mil':String(v);
+function nice(x){const p=Math.pow(10,Math.floor(Math.log10(x)));const m=x/p;return(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p}
+function rnd(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function scale(arr,total){const s=arr.reduce((x,y)=>x+y,0);const b=arr.map(v=>Math.round(v/s*total));b[b.indexOf(Math.max(...b))]+=total-b.reduce((x,y)=>x+y,0);return b}
+
+/* ---------- dados ilustrativos ---------- */
+const R=rnd(11);let tx=[],fr=[];
+for(let h=0;h<48;h++){
+  const hod=h%24;
+  tx.push(Math.max(.08,1+.9*Math.sin((hod-9)/24*2*Math.PI))*(.9+.2*R()));
+  const w=hod<6?3:hod<12?.8:hod<18?1.4:2.2;
+  fr.push(w*(.6+.8*R()));
+}
+tx=scale(tx,284807);fr=scale(fr,492);
+const normais=tx.map((v,i)=>v-fr[i]);
+const porHora=Array.from({length:24},(_,h)=>fr[h]+fr[h+24]);
+
+/* ---------- gráficos ---------- */
+function lineChart(series,{aria=''}={}){
+  const W=480,H=230,L=46,T=12,B=28,hasR=series.some(s=>s.r),Rm=hasR?42:14,iw=W-L-Rm,ih=H-T-B;
+  const ax=side=>{const m=Math.max(...series.filter(s=>!!s.r===side).flatMap(s=>s.d));return nice(m/4)*4};
+  const ML=ax(false),MR=hasR?ax(true):0;
+  const n=series[0].d.length,x=i=>L+iw*i/(n-1);
+  let o=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${aria}">`;
+  for(let i=0;i<=4;i++){
+    const y=T+ih*(1-i/4);
+    o+=`<line x1="${L}" x2="${L+iw}" y1="${y}" y2="${y}" class="gl"/>`;
+    o+=`<text x="${L-6}" y="${y+4}" text-anchor="end" class="ax"${hasR?' style="fill:var(--normal)"':''}>${short(ML*i/4)}</text>`;
+    if(hasR)o+=`<text x="${L+iw+6}" y="${y+4}" class="ax" style="fill:var(--fraud)">${MR*i/4}</text>`;
+  }
+  for(let i=0;i<n;i+=6){o+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" class="ax">${i===24?'D2 0h':i%24+'h'}</text>`}
+  o+=`<line x1="${x(24)}" x2="${x(24)}" y1="${T}" y2="${T+ih}" class="gl" stroke-dasharray="4 4"/>`;
+  series.forEach(s=>{
+    const M=s.r?MR:ML;
+    const pts=s.d.map((v,i)=>`${x(i).toFixed(1)},${(T+ih*(1-v/M)).toFixed(1)}`);
+    if(s.area)o+=`<polygon points="${L},${T+ih} ${pts.join(' ')} ${x(n-1)},${T+ih}" style="fill:${s.c};opacity:.16"/>`;
+    o+=`<polyline points="${pts.join(' ')}" fill="none" style="stroke:${s.c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+  return o+'</svg>';
+}
+
+function barChart(labels,data,{color='var(--fraud)',ops=null,gap=.28,every=1,vals=true,aria=''}={}){
+  const W=480,H=220,L=40,T=20,B=28,Rm=8,iw=W-L-Rm,ih=H-T-B;
+  const step=nice(Math.max(...data)/4),M=step*4,bw=iw/data.length;
+  let o=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${aria}">`;
+  for(let i=0;i<=4;i++){const y=T+ih*(1-i/4);o+=`<line x1="${L}" x2="${W-Rm}" y1="${y}" y2="${y}" class="gl"/><text x="${L-6}" y="${y+4}" text-anchor="end" class="ax">${br(M*i/4)}</text>`}
+  data.forEach((v,i)=>{
+    const h=ih*v/M,x=L+i*bw+bw*gap/2,w=bw*(1-gap);
+    o+=`<rect x="${x}" y="${T+ih-h}" width="${w}" height="${h}" rx="3" style="fill:${color};opacity:${ops?ops[i]:1}"/>`;
+    if(vals&&data.length<=12)o+=`<text x="${x+w/2}" y="${T+ih-h-5}" text-anchor="middle" class="ax">${v}</text>`;
+    if(i%every===0)o+=`<text x="${x+w/2}" y="${H-8}" text-anchor="middle" class="ax">${labels[i]}</text>`;
+  });
+  return o+'</svg>';
+}
+
+function hbarChart(labels,data,{color='var(--normal)'}={}){
+  const W=480,rh=30,L=44,Rm=52,H=labels.length*rh+6,iw=W-L-Rm,M=Math.max(...data);
+  let o=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Importância das variáveis">`;
+  data.forEach((v,i)=>{
+    const y=i*rh+4,w=iw*v/M;
+    o+=`<text x="${L-8}" y="${y+rh/2+2}" text-anchor="end" class="ax" style="font-size:14px">${labels[i]}</text>`;
+    o+=`<rect x="${L}" y="${y+4}" width="${w}" height="${rh-12}" rx="4" style="fill:${color};opacity:${(1-i*.055).toFixed(2)}"/>`;
+    o+=`<text x="${L+w+6}" y="${y+rh/2+2}" class="ax" style="font-size:13.5px">${(v*100).toFixed(0)}%</text>`;
+  });
+  return o+'</svg>';
+}
+
+function heatmap(rows,names){
+  const W=480,L=46,cw=(W-L-6)/24,ch=38,T=4,H=T+rows.length*(ch+4)+52,M=Math.max(...rows.flat());
+  let o=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa de calor de fraudes por hora">`;
+  rows.forEach((r,ri)=>{
+    const y=T+ri*(ch+4);
+    o+=`<text x="${L-8}" y="${y+ch/2+4}" text-anchor="end" class="ax" style="font-size:13.5px">${names[ri]}</text>`;
+    r.forEach((v,i)=>{o+=`<rect x="${L+i*cw+1}" y="${y}" width="${cw-2}" height="${ch}" rx="3" style="fill:var(--fraud);opacity:${(.07+.93*v/M).toFixed(2)}"><title>${i}h: ${v} fraudes</title></rect>`});
+  });
+  const yb=T+rows.length*(ch+4);
+  for(let i=0;i<24;i+=3)o+=`<text x="${L+i*cw+cw/2}" y="${yb+14}" text-anchor="middle" class="ax">${i}h</text>`;
+  const lx=L,ly=yb+28;
+  o+=`<text x="${lx}" y="${ly+9}" class="ax">Menos</text>`;
+  for(let i=0;i<8;i++)o+=`<rect x="${lx+44+i*22}" y="${ly}" width="20" height="12" rx="2" style="fill:var(--fraud);opacity:${(.07+.93*i/7).toFixed(2)}"/>`;
+  o+=`<text x="${lx+44+8*22+6}" y="${ly+9}" class="ax">Mais</text>`;
+  return o+'</svg>';
+}
+
+function boxplot(){
+  const W=480,H=96,L=22,Rm=22,iw=W-L-Rm,X=v=>L+iw*v/2200,cy=34;
+  const d={min:0,q1:12,med:75,q3:230,wh:560,mean:122,out:[700,900,1200,1600,2126]};
+  let o=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Boxplot do valor das fraudes">`;
+  [0,500,1000,1500,2000].forEach(v=>{o+=`<line x1="${X(v)}" x2="${X(v)}" y1="14" y2="${cy+22}" class="gl"/><text x="${X(v)}" y="${H-8}" text-anchor="middle" class="ax">${br(v)}</text>`});
+  o+=`<line x1="${X(d.min)}" x2="${X(d.wh)}" y1="${cy}" y2="${cy}" style="stroke:var(--sec)" stroke-width="2"/>`;
+  o+=`<line x1="${X(d.wh)}" x2="${X(d.wh)}" y1="${cy-8}" y2="${cy+8}" style="stroke:var(--sec)" stroke-width="2"/>`;
+  o+=`<rect x="${X(d.q1)}" y="${cy-14}" width="${X(d.q3)-X(d.q1)}" height="28" rx="4" style="fill:var(--fraud);opacity:.85"/>`;
+  o+=`<line x1="${X(d.med)}" x2="${X(d.med)}" y1="${cy-14}" y2="${cy+14}" stroke="#fff" stroke-width="3"/>`;
+  o+=`<path d="M${X(d.mean)} ${cy-6} l6 6 -6 6 -6 -6z" fill="#fff" stroke="var(--text)" stroke-width="1.5"/>`;
+  d.out.forEach(v=>{o+=`<circle cx="${X(v)}" cy="${cy}" r="4" style="fill:none;stroke:var(--fraud)" stroke-width="2"/>`});
+  return o+'</svg><div class="legend"><span><i style="background:var(--fraud)"></i>Caixa: 50% central</span><span>◇ média</span><span>| mediana</span><span>○ valores atípicos</span></div>';
+}
+
+function donut(){
+  const C=2*Math.PI*70,len=Math.max(C*.0017,C*.022);
+  $('#donut').innerHTML=`<svg viewBox="0 0 190 190" role="img" aria-label="Fraudes x não fraudes">
+    <g transform="rotate(-90 95 95)" fill="none" stroke-width="28">
+      <circle cx="95" cy="95" r="70" style="stroke:var(--normal)"/>
+      <circle cx="95" cy="95" r="70" style="stroke:var(--fraud)" stroke-dasharray="${len} ${C-len}"/>
+    </g>
+    <text x="95" y="93" text-anchor="middle" style="fill:var(--text);font-size:24px;font-weight:700">0,17%</text>
+    <text x="95" y="112" text-anchor="middle" class="ax">são fraudes</text></svg>
+    <ul><li><span class="legend"><span><i style="background:var(--normal)"></i>Não fraudes</span></span><b>284.315</b></li>
+    <li><span class="legend"><span><i style="background:var(--fraud)"></i>Fraudes</span></span><b>492</b></li></ul>`;
+}
+
+function gauge(){
+  const cx=150,cy=150,r=105;
+  const P=v=>{const a=Math.PI+v/100*Math.PI;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]};
+  const arc=(a,b,c)=>{const[x0,y0]=P(a),[x1,y1]=P(b);return`<path d="M${x0} ${y0} A${r} ${r} 0 0 1 ${x1} ${y1}" fill="none" style="stroke:${c}" stroke-width="24"/>`};
+  $('#gauge').innerHTML=arc(0,30,'var(--kpi)')+arc(30,70,'var(--amber)')+arc(70,100,'var(--fraud)')+
+    `<text x="${cx-r}" y="172" text-anchor="middle" class="ax">0%</text><text x="${cx+r}" y="172" text-anchor="middle" class="ax">100%</text>
+     <line id="needle" x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy-84}" style="stroke:var(--text)" stroke-width="4" stroke-linecap="round"/>
+     <circle cx="${cx}" cy="${cy}" r="9" style="fill:var(--text)"/>
+     <text id="g-val" x="${cx}" y="196" text-anchor="middle" style="fill:var(--text);font-size:26px;font-weight:700"></text>`;
+  const upd=()=>{
+    const v=+$('#g-in').value,a=Math.PI+v/100*Math.PI;
+    const n=$('#needle');n.setAttribute('x2',cx+84*Math.cos(a));n.setAttribute('y2',cy+84*Math.sin(a));
+    $('#g-val').textContent=v+'%';
+    $('#g-cls').textContent=v<30?'Risco baixo: aprovar':v<70?'Risco médio: revisar':'Risco alto: bloquear e investigar';
+  };
+  $('#g-in').addEventListener('input',upd);upd();
+}
+
+/* ---------- montagem ---------- */
+donut();
+$('#c-evol').innerHTML=lineChart([{d:normais,c:'var(--normal)'},{d:fr,c:'var(--fraud)',r:true}],{aria:'Evolução das transações no tempo'});
+
+const faixas=['0–10','10–50','50–100','100–250','250–500','500–1k','1k+'],fxd=[130,70,45,100,70,55,22];
+$('#c-faixa').innerHTML=barChart(faixas,fxd,{aria:'Fraudes por faixa de valor'});
+$('#ins-faixa').innerHTML=`<b>Insight:</b> ${Math.round(fxd.slice(0,4).reduce((a,b)=>a+b,0)/492*100)}% das fraudes ficam abaixo de R$ 250.`;
+const hist=[315,62,42,24,18,10,8,6,4,2,1];
+$('#c-hist').innerHTML=barChart(hist.map((_,i)=>i*200),hist,{color:'var(--sec)',gap:.06,every:2,vals:false,aria:'Histograma do valor das transações'});
+$('#c-box').innerHTML=boxplot();
+
+$('#c-heat').innerHTML=heatmap([fr.slice(0,24),fr.slice(24)],['Dia 1','Dia 2']);
+const risco=h=>h<6?1:h<12?.35:h<18?.65:1;
+$('#c-hora').innerHTML=barChart(Array.from({length:24},(_,h)=>h),porHora,{ops:porHora.map((_,h)=>risco(h)),gap:.2,every:3,vals:false,aria:'Fraudes por hora do dia'});
+$('#c-tempo').innerHTML=lineChart([{d:fr,c:'var(--fraud)',area:true}],{aria:'Evolução temporal das fraudes'});
+
+const per=[['00h às 06h',0,6,'Alto'],['06h às 12h',6,12,'Baixo'],['12h às 18h',12,18,'Médio'],['18h às 00h',18,24,'Alto']];
+$('#t-risco').innerHTML='<thead><tr><th>Horário</th><th class="n">Fraudes</th><th>Risco</th></tr></thead><tbody>'+
+  per.map(([n,a,b,r])=>`<tr><td>${n}</td><td class="n">${porHora.slice(a,b).reduce((x,y)=>x+y,0)}</td><td><span class="badge b-${r==='Alto'?'alto':r==='Médio'?'medio':'baixo'}">${r}</span></td></tr>`).join('')+'</tbody>';
+
+const feats=[['V14',.18],['V10',.11],['V17',.10],['V12',.09],['V4',.07],['V11',.06],['V3',.05],['V16',.05],['V7',.04],['V2',.03]];
+$('#c-feat').innerHTML=hbarChart(feats.map(f=>f[0]),feats.map(f=>f[1]));
+gauge();
+
+/* ---------- navegação ---------- */
+const tabs=[...document.querySelectorAll('.menu button')];
+tabs.forEach(b=>b.addEventListener('click',()=>{
+  tabs.forEach(t=>t.setAttribute('aria-selected',t===b));
+  document.querySelectorAll('section[role="tabpanel"]').forEach((s,i)=>s.classList.toggle('on',i==b.dataset.p));
+  window.scrollTo({top:0});
+}));
+</script>
+</body>
+</html>
